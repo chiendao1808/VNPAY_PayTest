@@ -33,10 +33,13 @@ public class MerchantController {
     }
 
 
-    @GetMapping(path = "/pay/direct/vnpay")
-    public ResponseEntity<?> requestPay()
+    @PostMapping(path = "/pay/direct/vnpay")
+    public ResponseEntity<?> requestPay( @RequestBody PaymentRequestDTO paymentRequestDTO,
+                                        HttpServletRequest request)
     {
-        return ResponseEntity.ok("");
+        String requestURL = vnpayRequestService.doPay(request,paymentRequestDTO);
+      //  restTemplate.postForObject(requestURL,paymentRequestDTO,String.class);
+        return ResponseEntity.ok(requestURL);
     }
 
 

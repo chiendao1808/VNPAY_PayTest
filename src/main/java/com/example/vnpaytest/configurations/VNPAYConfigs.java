@@ -94,7 +94,8 @@ public class VNPAYConfigs {
     public static String hashAllFields (Map fields)
     {
         try{
-            List fieldNames = new ArrayList<>(fields.keySet());
+            // need complete
+            List<String> fieldNames = new ArrayList<>(fields.keySet());
             Collections.sort(fieldNames);
             // create a string builder
             StringBuilder sb = new StringBuilder();
@@ -102,7 +103,7 @@ public class VNPAYConfigs {
             while (itr.hasNext())
             {
                 String fieldNameKey = (String) itr.next();
-                String fieldValue = (String) fields.get(fieldNameKey);
+                String fieldValue = String.valueOf(fields.get(fieldNameKey));
                 if(fieldNameKey !=null && StringUtils.hasText(fieldValue))
                     sb.append(fieldNameKey).append("=").append(fieldValue);
                 if(itr.hasNext()) sb.append("&");
@@ -116,7 +117,7 @@ public class VNPAYConfigs {
     }
 
     //get ip address send request
-    public String getIPAddress(HttpServletRequest request)
+    public static String getIPAddress(HttpServletRequest request)
     {
         try{
             String IP = request.getHeader("X-FORWARDED-FOR");

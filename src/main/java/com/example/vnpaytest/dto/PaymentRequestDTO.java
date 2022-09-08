@@ -10,24 +10,24 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class PaymentRequestDTO {
 
-    private  String vnp_OrderType ;
+    private  String vnpOrderType ;
 
-    private  Long vnp_Amount;
+    private  Long vnpAmount;
 
-    private String vnp_OrderInfo;
+    private String vnpOrderInfo;
 
-    private String vnp_Locate ;
+    private String vnpLocale ;
 
-    private String vnp_BankCode;
+    private String vnpBankCode;
 
 
     public PaymentRequestDTO(String orderType, Long amount, String OrderInfo, String locate, String bankCode)
     {
-        this.vnp_OrderType=orderType;
-        this.vnp_Amount=amount*100;
-        this.vnp_OrderInfo =OrderInfo;
-        this.vnp_Locate=locate;
-        this.vnp_BankCode = bankCode;
+        this.vnpOrderType=orderType;
+        this.vnpAmount=amount;
+        this.vnpOrderInfo =OrderInfo;
+        this.vnpLocale=locate;
+        this.vnpBankCode = bankCode;
     }
 
 

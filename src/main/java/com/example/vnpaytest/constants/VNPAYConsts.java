@@ -4,7 +4,7 @@ public class VNPAYConsts {
 
     public static  String vnpayURL ="https://sandbox.vnpayment.vn/paymentv2/vpcpay.html";
 
-    public static  String returnURL ="";
+    public static  String returnURL ="https://localhost:8083";
 
     public static  final String vnp_tnmCode ="24F3A5FL";
 

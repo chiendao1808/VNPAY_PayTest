@@ -3,8 +3,9 @@ server:
 spring:
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5433/qltv_vnpttech
+    url: jdbc:postgresql://localhost:5433/vnpay_db
     username: postgres
     password: chiendao18082001
     hikari:
-      schema:qltv_vnpttech_db
+      schema: vnpay_db_vnpt
+
