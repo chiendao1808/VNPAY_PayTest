@@ -1,0 +1,10 @@
+server:
+  port: 8083
+spring:
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: jdbc:postgresql://localhost:5433/qltv_vnpttech
+    username: postgres
+    password: chiendao18082001
+    hikari:
+      schema:qltv_vnpttech_db
