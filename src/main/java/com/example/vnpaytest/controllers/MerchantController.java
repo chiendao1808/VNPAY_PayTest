@@ -1,7 +1,10 @@
 package com.example.vnpaytest.controllers;
 
+import java.awt.Desktop;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,12 +14,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
-import com.example.vnpaytest.configurations.RestTemplateConfig;
+import com.example.vnpaytest.dto.OrderRequestDTO;
 import com.example.vnpaytest.dto.PaymentRequestDTO;
 import com.example.vnpaytest.services.VNPAYRequestService;
 
 @RestController
-@RequestMapping(path = "")
 public class MerchantController {
 
     @Autowired
@@ -34,17 +36,16 @@ public class MerchantController {
 
 
     @PostMapping(path = "/pay/direct/vnpay")
-    public ResponseEntity<?> requestPay( @RequestBody PaymentRequestDTO paymentRequestDTO,
-                                        HttpServletRequest request)
+    public ResponseEntity<?> requestPay( @RequestBody OrderRequestDTO orderRequestDTO,
+                                        HttpServletRequest request) throws URISyntaxException, IOException
     {
-        String requestURL = vnpayRequestService.doPay(request,paymentRequestDTO);
-      //  restTemplate.postForObject(requestURL,paymentRequestDTO,String.class);
-        return ResponseEntity.ok(requestURL);
+       //restTemplate.postForObject(requestURL,paymentRequestDTO,String.class);
+        return ResponseEntity.ok(vnpayRequestService.doPay(request,orderRequestDTO));
     }
 
 
     @GetMapping("/IPN")
-    public ResponseEntity<?> doIPN (@RequestParam(name = "vnp_TmnCode") String tmnCode,
+    public void processIPN (@RequestParam(name = "vnp_TmnCode") String tmnCode,
                                     @RequestParam(name = "vnp_Amount") Long amount,
                                     @RequestParam(name = "vnp_BankCode") String bankCode,
                                     @RequestParam(name = "vnp_BankTranNo") String bankTranNo,
@@ -52,18 +53,18 @@ public class MerchantController {
                                     @RequestParam(name = "vnp_PayDate", required = false) Long payDate,
                                     @RequestParam(name = "vnp_OrderInfo") String orderInfo,
                                     @RequestParam(name = "vnp_TransactionNo") Long transactionNo,
-                                    @RequestParam(name = "vnp_ResponseCode") Integer responseCode,
-                                    @RequestParam(name = "vnp_TransactionStatus") Integer transactionStatus,
+                                    @RequestParam(name = "vnp_ResponseCode") String responseCode,
+                                    @RequestParam(name = "vnp_TransactionStatus") String transactionStatus,
                                     @RequestParam(name = "vnp_TxnRef") String txnRef,
-                                    @RequestParam(name = "vnp_SecureHashType",required = false) String secureHashType,
+                                    @RequestParam(name = "vnp_SecureHashType",required = false,defaultValue = "HmacSHA512") String secureHashType,
                                     @RequestParam(name = "vnp_SecureHash") String secureHash,
                                     HttpServletRequest request)
     {
-        return ResponseEntity.ok("");
+        vnpayRequestService.doIPN(request);
     }
 
     @GetMapping("/ReturnUrl")
-    public ResponseEntity<?> returnPaymentInfo( @RequestParam(name = "vnp_TmnCode") String tmnCode,
+    public ResponseEntity<?> processReturn( @RequestParam(name = "vnp_TmnCode") String tmnCode,
                                                 @RequestParam(name = "vnp_Amount") Long amount,
                                                 @RequestParam(name = "vnp_BankCode") String bankCode,
                                                 @RequestParam(name = "vnp_BankTranNo") String bankTranNo,
@@ -71,14 +72,14 @@ public class MerchantController {
                                                 @RequestParam(name = "vnp_PayDate", required = false) Long payDate,
                                                 @RequestParam(name = "vnp_OrderInfo") String orderInfo,
                                                 @RequestParam(name = "vnp_TransactionNo") Long transactionNo,
-                                                @RequestParam(name = "vnp_ResponseCode") Integer responseCode,
-                                                @RequestParam(name = "vnp_TransactionStatus") Integer transactionStatus,
+                                                @RequestParam(name = "vnp_ResponseCode") String responseCode,
+                                                @RequestParam(name = "vnp_TransactionStatus") String transactionStatus,
                                                 @RequestParam(name = "vnp_TxnRef") String txnRef,
-                                                @RequestParam(name = "vnp_SecureHashType",required = false) String secureHashType,
+                                                @RequestParam(name = "vnp_SecureHashType",required = false,defaultValue = "HmacSHA512") String secureHashType,
                                                 @RequestParam(name = "vnp_SecureHash") String secureHash,
                                                 HttpServletRequest request)
     {
-        return ResponseEntity.ok("");
+        return ResponseEntity.ok(vnpayRequestService.doReturn(request));
     }
 
 }

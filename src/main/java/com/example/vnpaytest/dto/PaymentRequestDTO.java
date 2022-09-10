@@ -1,5 +1,6 @@
 package com.example.vnpaytest.dto;
 
+import java.sql.Timestamp;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -7,28 +8,13 @@ import lombok.NoArgsConstructor;
 
 @Data
 @Builder
+@AllArgsConstructor
 @NoArgsConstructor
 public class PaymentRequestDTO {
 
-    private  String vnpOrderType ;
+    private String message;
 
-    private  Long vnpAmount;
+    private String paymentDirectURL;
 
-    private String vnpOrderInfo;
-
-    private String vnpLocale ;
-
-    private String vnpBankCode;
-
-
-    public PaymentRequestDTO(String orderType, Long amount, String OrderInfo, String locate, String bankCode)
-    {
-        this.vnpOrderType=orderType;
-        this.vnpAmount=amount;
-        this.vnpOrderInfo =OrderInfo;
-        this.vnpLocale=locate;
-        this.vnpBankCode = bankCode;
-    }
-
-
+    private Timestamp createdTime;
 }

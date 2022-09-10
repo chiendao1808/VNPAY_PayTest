@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -66,7 +67,7 @@ public class VNPAYConfigs {
     }
 
     // generate a hase using hmac sha512
-    public static String hmacSHA512(final String key, final String data) // key truyền vào vnp_hashSecret,
+    public static String hmacSHA512(String key, String data) // key truyền vào vnp_hashSecret,
     {
         try{
             if(key==null || data ==null)
@@ -85,7 +86,7 @@ public class VNPAYConfigs {
             return sb.toString();
         } catch (Exception ex)
         {
-            log.error("Generate hmac HmacSHA512",ex);
+            log.error("Generate hmac HmacSHA512 error",ex);
             return "";
         }
     }
@@ -103,7 +104,7 @@ public class VNPAYConfigs {
             while (itr.hasNext())
             {
                 String fieldNameKey = (String) itr.next();
-                String fieldValue = String.valueOf(fields.get(fieldNameKey));
+                String fieldValue = (String)fields.get(fieldNameKey);
                 if(fieldNameKey !=null && StringUtils.hasText(fieldValue))
                     sb.append(fieldNameKey).append("=").append(fieldValue);
                 if(itr.hasNext()) sb.append("&");
