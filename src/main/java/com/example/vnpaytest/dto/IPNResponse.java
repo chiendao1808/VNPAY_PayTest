@@ -1,6 +1,5 @@
 package com.example.vnpaytest.dto;
 
-import java.sql.Timestamp;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,14 +9,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class UserResponseDTO {
+public class IPNResponse {
 
-    private String message;
+    private String RspCode ;
 
-    private String detail ;
-
-    private String paymentStatus;
-
-    private Timestamp proccessTime;
+    private String Message;
 
 }

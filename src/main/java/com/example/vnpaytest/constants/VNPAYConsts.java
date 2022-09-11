@@ -6,7 +6,7 @@ public class VNPAYConsts {
 
     public static  String localReturnURL ="http://localhost:8083";
 
-    public  static String herokuReturnURL = "https://vnptvnpaytest.herokuapp.com";
+    public  static String herokuReturnURL = "https://vnpayvnpttest.herokuapp.com";
 
     public static  final String vnp_tnmCode ="24F3A5FL";
 

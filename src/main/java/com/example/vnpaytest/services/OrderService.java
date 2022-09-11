@@ -19,10 +19,10 @@ public class OrderService {
     private OrderRepository orderRepository;
 
     // get, filter orders
-    Page<Order> getByCreterias(Long orderId,String secureHash,String transactionRef, Pageable pageable)
+   public Page<Order> getByCreterias(Long orderId,String transactionCode,String transactionRef, Pageable pageable)
     {
         try{
-            return orderRepository.getByCreterias(orderId,secureHash,transactionRef,pageable);
+            return orderRepository.getByCreterias(orderId,transactionCode,transactionRef,pageable);
         } catch (Exception ex)
         {
             log.error("Get orders by creterias error", ex);
@@ -31,7 +31,7 @@ public class OrderService {
     }
 
     // get order by transaction_ref
-    Optional<Order> getByTransactionRef(String transactionRef)
+   public Optional<Order> getByTransactionRef(String transactionRef)
     {
         try{
             return orderRepository.getByTransactionRef(transactionRef);

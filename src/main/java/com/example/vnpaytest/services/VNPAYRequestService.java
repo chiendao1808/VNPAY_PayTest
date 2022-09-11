@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import com.example.vnpaytest.configurations.VNPAYConfigs;
 import com.example.vnpaytest.constants.VNPAYConsts;
+import com.example.vnpaytest.dto.IPNResponse;
 import com.example.vnpaytest.dto.OrderRequestDTO;
 import com.example.vnpaytest.dto.PaymentRequestDTO;
 import com.example.vnpaytest.dto.UserResponseDTO;
@@ -56,10 +57,9 @@ public class VNPAYRequestService{
             String vnp_TxnRef = VNPAYConfigs.getRandomNum(8);
             String vnp_IpAddr = VNPAYConfigs.getIPAddress(request);
             // get host address
-            int thirdSlashIndex = request.getRequestURL().indexOf("/",7);
+            int thirdSlashIndex = request.getRequestURL().indexOf("/",8);
             String vnp_ReturnUrl = request.getRequestURL().toString().substring(0,thirdSlashIndex) +"/ReturnUrl";
 
-            System.out.println(vnp_ReturnUrl);
             Long vnp_Amount = orderRequestDTO.getVnpAmount()*100;
             String vnp_Locale = orderRequestDTO.getVnpLocale();
             String vnp_BankCode = orderRequestDTO.getVnpBankCode();
@@ -155,7 +155,7 @@ public class VNPAYRequestService{
 
 
     // IPN code impl
-    public void doIPN(HttpServletRequest request)
+    public IPNResponse doIPN(HttpServletRequest request)
     {
         try{
             // get fields in request
@@ -175,7 +175,7 @@ public class VNPAYRequestService{
             if(fields.containsKey("vnp_SecureHashType")) fields.remove("vnp_SecureHashType");
             String secureHash = VNPAYConfigs.hashAllFields(fields);
             String vnp_SecureHash = request.getParameter("vnp_SecureHash");
-            //get order with vnp_TxnRef in request
+            //get order with vnp_TxnRef
             Optional<Order> orderOptional = orderRepository.getByTransactionRef(request.getParameter("vnp_TxnRef"));
             if(!orderOptional.isPresent())
                 throw new RuntimeException("Order not found");
@@ -191,22 +191,34 @@ public class VNPAYRequestService{
                 order.setPayDate(new Timestamp(formatter.parse(fields.get("vnp_PayDate").toString()).getTime()));
 
                 // check conditions
-                boolean checkOrderId = order.getTransactionRef().equals(request.getParameter("vnp_TxnCode"));
+                boolean checkOrderId = order.getTransactionRef().equals(request.getParameter("vnp_TxnRef"));
                 boolean checkAmount = order.getAmount() ==  Long.valueOf(request.getParameter("vnp_Amount"))/100;
                 order.setAmount(order.getAmount()/100);
                 boolean checkOrderStatus = order.getOrderStatus() ==0;
-                if(checkOrderId && checkAmount && checkOrderStatus)
+                if(checkOrderId)
                 {
-                        if(request.getParameter("vnp_ResponseCode").equals("00"))
-                        order.setOrderStatus(1);
-                        else order.setOrderStatus(2);
+                    if(checkAmount)
+                    {
+                        if(checkOrderStatus)
+                        {
+                            if(request.getParameter("vnp_ResponseCode").equals("00"))
+                                order.setOrderStatus(1);
+                            else order.setOrderStatus(2);
+                            if(orderRepository.save(order) == null)
+                                throw new RuntimeException("Update order status error");
+                            return IPNResponse.builder().RspCode("00").Message("Confirm Success").build();
+                        }
+                        else return IPNResponse.builder().RspCode("02").Message("Order already confirmed").build();
+                    }
+                    else return IPNResponse.builder().RspCode("04").Message("Invalid Amount").build();
                 }
-                if(orderRepository.save(order) == null)
-                    throw new RuntimeException("Update order status error");
+                else return IPNResponse.builder().RspCode("01").Message("Order not Found").build();
             }
+            else return IPNResponse.builder().RspCode("97").Message("Invalid Checksum").build();
         } catch (Exception ex)
         {
             log.error("IPN process error", ex);
+            return IPNResponse.builder().RspCode("99").Message("Unknow error").build();
         }
     }
 
@@ -236,7 +248,7 @@ public class VNPAYRequestService{
             Optional<Order> orderOptional = orderRepository.getByTransactionRef(request.getParameter("vnp_TxnRef"));
             if(!orderOptional.isPresent())
                 throw new RuntimeException("Order not found");
-            Order order = orderOptional.get();
+           // Order order = orderOptional.get();
             String responseCode = request.getParameter("vnp_ResponseCode");
             SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
             Timestamp proccessTime = new Timestamp(formatter.parse(fields.get("vnp_PayDate").toString()).getTime() + 7*60*60*1000L);
@@ -245,15 +257,18 @@ public class VNPAYRequestService{
                 if(responseCode.equals("00"))
                 {
                     userResponseDTO.setMessage(VNPAYUtils.processResponseCodeStatusCode("00"));
+                    userResponseDTO.setDetail("Thực hiện thanh toán thành công cho đơn hàng có mã tham chiếu :"+" "+request.getParameter("vnp_TxnRef"));
                     userResponseDTO.setPaymentStatus("Success");
                     userResponseDTO.setProccessTime(proccessTime);
                 } else {
                     userResponseDTO.setMessage(VNPAYUtils.processResponseCodeStatusCode(responseCode));
+                    userResponseDTO.setDetail("Thực hiện thanh toán thất bại cho đơn hàng có mã tham chiếu :"+" "+request.getParameter("vnp_TxnRef"));
                     userResponseDTO.setPaymentStatus("Fail");
                     userResponseDTO.setProccessTime(proccessTime);
                 }
             } else {
                 userResponseDTO.setMessage(VNPAYUtils.processResponseCodeStatusCode("97"));
+                userResponseDTO.setDetail("Đã xảy ra lỗi trong quá trình xử lý thanh toán với mã lỗi: 97" );
                 userResponseDTO.setPaymentStatus("Fail");
                 userResponseDTO.setProccessTime(proccessTime);
             }
