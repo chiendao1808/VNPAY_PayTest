@@ -7,12 +7,12 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class VNPAYUtils {
 
-    public static String generateTranCode(Long orderId){
+    public static String generateTranAndOrderCode(Long id ,int length){
         try {
-            StringBuilder sb = new StringBuilder("GD");
-            String tranIdString = String.valueOf(orderId);
+            StringBuilder sb = new StringBuilder();
+            String tranIdString = String.valueOf(id);
             // let transaction code maximum length is 15
-            for (int i = 0; i<15-tranIdString.length()-2; i++)
+            for (int i = 0; i<length-tranIdString.length(); i++)
             {
                 sb.append("0");
             }

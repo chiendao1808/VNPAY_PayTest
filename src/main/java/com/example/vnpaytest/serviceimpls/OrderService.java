@@ -1,7 +1,5 @@
-package com.example.vnpaytest.services;
+package com.example.vnpaytest.serviceimpls;
 
-import java.util.Enumeration;
-import java.util.Map;
 import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -19,28 +17,14 @@ public class OrderService {
     private OrderRepository orderRepository;
 
     // get, filter orders
-   public Page<Order> getByCreterias(Long orderId,String transactionCode,String transactionRef, Pageable pageable)
+   public Page<Order> getByCreterias(Long orderId,String orderLocale, Pageable pageable)
     {
         try{
-            return orderRepository.getByCreterias(orderId,transactionCode,transactionRef,pageable);
+            return orderRepository.getByCreterias(orderId,orderLocale,pageable);
         } catch (Exception ex)
         {
             log.error("Get orders by creterias error", ex);
             return Page.empty();
         }
     }
-
-    // get order by transaction_ref
-   public Optional<Order> getByTransactionRef(String transactionRef)
-    {
-        try{
-            return orderRepository.getByTransactionRef(transactionRef);
-        } catch (Exception ex)
-        {
-            log.error("Get order by transaction ref error",ex );
-            return Optional.empty();
-        }
-    }
-
-
 }

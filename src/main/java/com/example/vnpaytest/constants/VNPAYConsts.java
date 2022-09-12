@@ -8,6 +8,8 @@ public class VNPAYConsts {
 
     public  static String herokuReturnURL = "https://vnpayvnpttest.herokuapp.com";
 
+    public static String vnpayTransactionURL ="https://sandbox.vnpayment.vn/merchant_webapi/api/transaction";
+
     public static  final String vnp_tnmCode ="24F3A5FL";
 
     public static final String vnp_HashSecret ="BWNFDYXHVSDLZKRXZYNEHUVQGHFFCIZA";

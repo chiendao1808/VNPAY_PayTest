@@ -1,22 +1,22 @@
-package com.example.vnpaytest.services;
+package com.example.vnpaytest.serviceimpls;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TimeZone;
 import javax.servlet.http.HttpServletRequest;
-import org.apache.catalina.util.URLEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -25,9 +25,13 @@ import com.example.vnpaytest.constants.VNPAYConsts;
 import com.example.vnpaytest.dto.IPNResponse;
 import com.example.vnpaytest.dto.OrderRequestDTO;
 import com.example.vnpaytest.dto.PaymentRequestDTO;
+import com.example.vnpaytest.dto.RefundRequestDTO;
+import com.example.vnpaytest.dto.RefundResponseDTO;
 import com.example.vnpaytest.dto.UserResponseDTO;
 import com.example.vnpaytest.entities.Order;
+import com.example.vnpaytest.entities.Transaction;
 import com.example.vnpaytest.repositories.OrderRepository;
+import com.example.vnpaytest.repositories.TransactionRepository;
 import lombok.extern.slf4j.Slf4j;
 import utils.VNPAYUtils;
 
@@ -41,6 +45,9 @@ public class VNPAYRequestService{
 
     @Autowired
     private OrderRepository orderRepository;
+
+    @Autowired
+    private TransactionRepository transactionRepository;
 
 
     // do Pay code impl -> return a request url
@@ -98,7 +105,6 @@ public class VNPAYRequestService{
             vnp_Params.put("vnp_CurrCode",vnp_CurrCode);
 
             List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
-           // Collections.sort(fieldNames);
             Collections.sort(fieldNames);
             StringBuilder hashData  = new StringBuilder();
             Iterator iterator = fieldNames.iterator();
@@ -124,25 +130,26 @@ public class VNPAYRequestService{
            // System.out.println("First secureHash:"+ vnp_SecureHash);
             query.append("&vnp_SecureHash").append("=").append(vnp_SecureHash);
             // create new order in db
-            Order newOrder = Order.builder().orderInfo(vnp_OrderInfo)
-                                            .orderType(vnp_OrderType)
-                                            .orderLocale(vnp_Locale)
-                                            .orderStatus(0)
-                                            .amount(vnp_Amount/100)
-                                            .secureHash(vnp_SecureHash)
-                                            .bankCode(vnp_BankCode)
-                                            .createDate(createDate)
-                                            .expireDate(expireDate)
-                                            .transactionRef(vnp_TxnRef)
-                                            .currencyCode(vnp_CurrCode)
-                                            .build();
-            Optional<Order> addedOrder = Optional.ofNullable(orderRepository.save(newOrder));
+
+            Optional<Order> addedOrder = Optional.ofNullable(orderRepository
+                                                                    .save(Order.builder().orderInfo(vnp_OrderInfo)
+                                                                                        .orderType(vnp_OrderType)
+                                                                                        .orderLocale(vnp_Locale)
+                                                                                        .orderStatus(0)
+                                                                                        .amount(vnp_Amount/100)
+                                                                                        .createDate(createDate)
+                                                                                        .expireDate(expireDate)
+                                                                                        .transactionRef(vnp_TxnRef)
+                                                                                        .currencyCode(vnp_CurrCode)
+                                                                                        .cancelled(false)
+                                                                                        .build()));
             if(addedOrder.isPresent())
             {
                 Order updateOrder = addedOrder.get();
-                updateOrder.setTransactionCode(VNPAYUtils.generateTranCode(updateOrder.getOrderId()));
+                updateOrder.setOrderCode("DH"+VNPAYUtils.generateTranAndOrderCode(updateOrder.getOrderId(),8));
                 orderRepository.save(updateOrder);
-            } else  throw  new RuntimeException("Add order error");
+            } else throw  new RuntimeException("Add order error");
+
             return  PaymentRequestDTO.builder().paymentDirectURL(query.toString())
                                                 .message("Yêu cầu thanh toán đã được tạo!")
                                                 .createdTime(createDate).build();
@@ -167,7 +174,6 @@ public class VNPAYRequestService{
                 if(fieldKey != null && StringUtils.hasText(fieldVal))
                 {
                     fields.put(fieldKey,fieldVal);
-                  //  System.out.println(fieldKey +":" + fieldVal);
                 }
             }
             // remove not hashed
@@ -175,35 +181,53 @@ public class VNPAYRequestService{
             if(fields.containsKey("vnp_SecureHashType")) fields.remove("vnp_SecureHashType");
             String secureHash = VNPAYConfigs.hashAllFields(fields);
             String vnp_SecureHash = request.getParameter("vnp_SecureHash");
-            //get order with vnp_TxnRef
-            Optional<Order> orderOptional = orderRepository.getByTransactionRef(request.getParameter("vnp_TxnRef"));
-            if(!orderOptional.isPresent())
-                throw new RuntimeException("Order not found");
-            Order order = orderOptional.get();
+
+            // date format
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+
             if(secureHash.equals(vnp_SecureHash))
             {
-                // set transaction's infos
-                order.setTransactionResCode(fields.get("vnp_ResponseCode").toString());
-                order.setTransactionStatus(fields.get("vnp_TransactionStatus").toString());
-                order.setTransactionNo(Long.valueOf(fields.get("vnp_TransactionNo").toString()));
-                order.setBankTranNo(fields.get("vnp_BankTranNo").toString());
-                SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
-                order.setPayDate(new Timestamp(formatter.parse(fields.get("vnp_PayDate").toString()).getTime()));
+                String txnRef = request.getParameter("vnp_TxnRef");
+                Order order = orderRepository.getByTranRef(txnRef).get();
+                int addTime = request.getLocale().getCountry().equals("VN")?0:7;
+                if(order.getExpireDate().before(new Timestamp(Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7")).getTimeInMillis()+addTime*60*60*1000L)))
+                    order.setCancelled(true);
 
                 // check conditions
-                boolean checkOrderId = order.getTransactionRef().equals(request.getParameter("vnp_TxnRef"));
+                boolean checkOrderId = order !=null;
                 boolean checkAmount = order.getAmount() ==  Long.valueOf(request.getParameter("vnp_Amount"))/100;
-                order.setAmount(order.getAmount()/100);
-                boolean checkOrderStatus = order.getOrderStatus() ==0;
+                order.setAmount(order.getAmount());
+                boolean checkOrderStatus = order.getOrderStatus() ==0 && order.getCancelled() ==false;
                 if(checkOrderId)
                 {
                     if(checkAmount)
                     {
                         if(checkOrderStatus)
                         {
-                            if(request.getParameter("vnp_ResponseCode").equals("00"))
+                            Transaction transaction = transactionRepository.save(Transaction.builder()
+                                .transationResCode(request.getParameter("vnp_ResponseCode"))
+                                .bankCode(request.getParameter("vnp_BankCode"))
+                                .bankTranNo(request.getParameter("vnp_BankTranNo"))
+                                .transactionNo(Long.valueOf(request.getParameter("vnp_TransactionNo")))
+                                .order(order)
+                                .amount(order.getAmount())
+                                .currencyCode(order.getCurrencyCode())
+                                .build());
+                            if(request.getParameter("vnp_ResponseCode").equals("00")
+                                && request.getParameter("vnp_TransactionStatus").equals("00")
+                                && transaction !=null)
+                            {
                                 order.setOrderStatus(1);
-                            else order.setOrderStatus(2);
+                                transaction.setTransactionCode("GD"+VNPAYUtils.generateTranAndOrderCode(transaction.getTransactionId(),13));
+                                transaction.setTransactionStatus(1);
+                                transaction.setPayDate(new Timestamp(formatter.parse(request.getParameter("vnp_PayDate")).getTime()+addTime*60*60*1000L));
+                            }
+                            else {
+                               // order.setOrderStatus(2);
+                                transaction.setTransactionCode("GD"+VNPAYUtils.generateTranAndOrderCode(transaction.getTransactionId(),13));
+                                transaction.setTransactionStatus(2);
+                                transaction.setPayDate(new Timestamp(formatter.parse(request.getParameter("vnp_PayDate")).getTime()+addTime*60*60*1000L));
+                            }
                             if(orderRepository.save(order) == null)
                                 throw new RuntimeException("Update order status error");
                             return IPNResponse.builder().RspCode("00").Message("Confirm Success").build();
@@ -218,7 +242,7 @@ public class VNPAYRequestService{
         } catch (Exception ex)
         {
             log.error("IPN process error", ex);
-            return IPNResponse.builder().RspCode("99").Message("Unknow error").build();
+            return IPNResponse.builder().RspCode("99").Message("Unknown error").build();
         }
     }
 
@@ -236,7 +260,6 @@ public class VNPAYRequestService{
                 if(fieldKey != null && StringUtils.hasText(fieldVal))
                 {
                     fields.put(fieldKey,fieldVal);
-                    System.out.println(fieldKey +":" + fieldVal);
                 }
             }
             String vnp_SecureHash = request.getParameter("vnp_SecureHash");
@@ -244,31 +267,34 @@ public class VNPAYRequestService{
             if(fields.containsKey("vnp_SecureHashType")) fields.remove("vnp_SecureHashType");
             // gen checksum
             String secureHash = VNPAYConfigs.hashAllFields(fields);
-
-            Optional<Order> orderOptional = orderRepository.getByTransactionRef(request.getParameter("vnp_TxnRef"));
+            String txnRef = request.getParameter("vnp_TxnRef");
+            Optional<Order> orderOptional = orderRepository.getByTranRef(txnRef);
             if(!orderOptional.isPresent())
                 throw new RuntimeException("Order not found");
-           // Order order = orderOptional.get();
             String responseCode = request.getParameter("vnp_ResponseCode");
             SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
             Timestamp proccessTime = new Timestamp(formatter.parse(fields.get("vnp_PayDate").toString()).getTime() + 7*60*60*1000L);
             if(secureHash.equals(vnp_SecureHash))
             {
+                String orderCode = orderOptional.get().getOrderCode();
                 if(responseCode.equals("00"))
                 {
                     userResponseDTO.setMessage(VNPAYUtils.processResponseCodeStatusCode("00"));
-                    userResponseDTO.setDetail("Thực hiện thanh toán thành công cho đơn hàng có mã tham chiếu :"+" "+request.getParameter("vnp_TxnRef"));
+                    userResponseDTO.setDetail("Thực hiện thanh toán thành công cho đơn hàng " + orderCode +"!");
+                    userResponseDTO.setOrderCode(orderCode);
                     userResponseDTO.setPaymentStatus("Success");
                     userResponseDTO.setProccessTime(proccessTime);
                 } else {
                     userResponseDTO.setMessage(VNPAYUtils.processResponseCodeStatusCode(responseCode));
-                    userResponseDTO.setDetail("Thực hiện thanh toán thất bại cho đơn hàng có mã tham chiếu :"+" "+request.getParameter("vnp_TxnRef"));
+                    userResponseDTO.setDetail("Thực hiện thanh toán thất bại cho đơn hàng "+ orderCode+"!");
+                    userResponseDTO.setOrderCode(orderCode);
                     userResponseDTO.setPaymentStatus("Fail");
                     userResponseDTO.setProccessTime(proccessTime);
                 }
             } else {
                 userResponseDTO.setMessage(VNPAYUtils.processResponseCodeStatusCode("97"));
                 userResponseDTO.setDetail("Đã xảy ra lỗi trong quá trình xử lý thanh toán với mã lỗi: 97" );
+                userResponseDTO.setOrderCode(orderOptional.get().getOrderCode());
                 userResponseDTO.setPaymentStatus("Fail");
                 userResponseDTO.setProccessTime(proccessTime);
             }
@@ -276,6 +302,78 @@ public class VNPAYRequestService{
         } catch (Exception ex)
         {
             log.error("Return process error", ex);
+            return null;
+        }
+    }
+
+    // process refund request
+    public RefundResponseDTO doRefund(RefundRequestDTO refundRequestDTO, HttpServletRequest request)
+    {
+        try{
+            StringBuilder query = new StringBuilder(VNPAYConsts.vnpayTransactionURL);
+            query.append("?");
+            String vnp_RequestId = VNPAYConfigs.getRandomNum(15);
+            String vnp_Version ="2.1.0";
+            String vnp_Command ="refund";
+            String vnp_TmnCode = VNPAYConsts.vnp_tnmCode;
+            String vnp_TransactionType = refundRequestDTO.getTransactionType();
+            Optional<Transaction> transactionOp = transactionRepository.getByTransactionCode(refundRequestDTO.getTransactionCode());
+            if(!transactionOp.isPresent() || transactionOp.get().getTransactionStatus() !=1)
+                throw new RuntimeException("Transaction not found or not successfull transaction");
+            String vnp_TxnRef = transactionOp.get().getOrder().getTransactionRef();
+            if(refundRequestDTO.getAmount() > transactionOp.get().getAmount())
+                throw new RuntimeException("Requested Refund Amount exceeded the transaction's amount");
+            Long vnp_Amount = refundRequestDTO.getAmount()*100;
+            String vnp_OrderInfo =refundRequestDTO.getRefundInfo();
+            Long vnp_TransactionNo =transactionOp.get().getTransactionNo(); // can empty
+
+            Calendar calendar =Calendar.getInstance(TimeZone.getTimeZone("Etc/GMT+7"));
+            SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMddHHmmss");
+            String vnp_TransactionDate = formatter.format(calendar.getTime());
+            String vnp_CreateBy =refundRequestDTO.getRequestBy();
+            String vnp_createDate = formatter.format(calendar.getTime());
+            String vnp_IpAddr = VNPAYConfigs.getIPAddress(request);
+
+            // put to a map
+            Map vnp_Params = new LinkedHashMap();
+            vnp_Params.put("vnp_RequestId",vnp_RequestId);
+            vnp_Params.put("vnp_Version",vnp_Version);
+            vnp_Params.put("vnp_Command",vnp_Command);
+            vnp_Params.put("vnp_TmnCode",vnp_TmnCode);
+            vnp_Params.put("vnp_TransactionType",vnp_TransactionType);
+            vnp_Params.put("vnp_TxnRef",vnp_TxnRef);
+            vnp_Params.put("vnp_Amount",vnp_Amount);
+            vnp_Params.put("vnp_TransactionNo",vnp_TransactionNo);
+            vnp_Params.put("vnp_TransactionDate",vnp_TransactionDate);
+            vnp_Params.put("vnp_CreateBy",vnp_CreateBy);
+            vnp_Params.put("vnp_CreateDate",vnp_createDate);
+            vnp_Params.put("vnp_IpAddr",vnp_IpAddr);
+            vnp_Params.put("vnp_OrderInfo",vnp_OrderInfo);
+
+            List<String> fieldNames = new ArrayList<>(vnp_Params.keySet());
+            StringBuilder hashData = new StringBuilder();
+            Iterator itr = fieldNames.iterator();
+            while (itr.hasNext()){
+                String fieldKey = (String) itr.next();
+                String fieldVal = String.valueOf(vnp_Params.get(fieldKey));
+                if(fieldKey!=null && StringUtils.hasText(fieldVal))
+                {
+                    query.append(fieldKey).append("=").append(URLEncoder.encode(fieldVal,StandardCharsets.US_ASCII.toString()));
+                    hashData.append(fieldKey).append("=").append(URLEncoder.encode(fieldVal,StandardCharsets.US_ASCII.toString()));
+                }
+                if(itr.hasNext()){
+                    query.append("&");
+                    hashData.append("|");
+                }
+            }
+            String vnp_SecureHash = VNPAYConfigs.hmacSHA512(VNPAYConsts.vnp_HashSecret,hashData.toString());
+            query.append("&").append("vnp_SecureHash").append("=").append(vnp_SecureHash);
+            return RefundResponseDTO.builder().requestURL(query.toString())
+                .createdTime(calendar.getTime())
+                .message("Yêu cầu hoàn tiền đã được tạo!").build();
+        } catch (Exception ex)
+        {
+            log.error("Request refund error",ex);
             return null;
         }
     }

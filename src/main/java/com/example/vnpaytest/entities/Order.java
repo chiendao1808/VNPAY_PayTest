@@ -26,6 +26,9 @@ public class Order {
     @Column(name = "order_id",unique = true,nullable = false)
     private Long orderId;
 
+    @Column(name = "order_code",unique = true)
+    private String orderCode;
+
     @Column(name = "order_type")
     private String orderType ;
 
@@ -36,10 +39,7 @@ public class Order {
     private Long amount;
 
     @Column(name = "currency_code")
-    private String currencyCode; // vnp_CurrCode
-
-    @Column(name = "bank_code")
-    private String bankCode;   // vnp_BankCode
+    private String currencyCode;
 
     @Column(name = "order_status")
     private Integer orderStatus;  // 0 = pending , 1= success , 2 = fail
@@ -50,31 +50,14 @@ public class Order {
     @Column(name = "create_date")
     private Timestamp createDate;
 
+    @Column(name = "transaction_ref")
+    private String transactionRef; // define a order
+
     @Column(name = "expire_date")
     private Timestamp expireDate;
 
-    @Column(name = "secure_hash")
-    private String secureHash;  // checksum for transaction check vnp_SecureHash
+    @Column(name = "cancelled")
+    private Boolean cancelled;
 
-    @Column(name = "transaction_ref")
-    private String transactionRef ;  // vnp_TxnRef
-
-    @Column(name = "transaction_code")
-    private String transactionCode; // GDxxxxxxx
-
-    @Column(name = "pay_date" )
-    private Timestamp payDate ;  // vnp_PayDate
-
-    @Column(name = "transaction_no")
-    private Long transactionNo;  //vnp_TransactionNo
-
-    @Column(name = "bank_tran_no")
-    private String bankTranNo;   //vnp_Bank
-
-    @Column(name = "transaction_res_code")
-    private String transactionResCode; // vnp_ResponseCode
-
-    @Column(name = "transaction_status")
-    private String transactionStatus;  // vnp_TransactionStatus
 
 }
