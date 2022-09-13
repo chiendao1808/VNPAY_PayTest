@@ -2,6 +2,7 @@ package com.example.vnpaytest.serviceimpls;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.Time;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
@@ -156,7 +157,10 @@ public class VNPAYRequestService{
         } catch (Exception ex)
         {
             log.error("Do payment error",ex);
-            return null;
+            return PaymentRequestDTO.builder()
+                .message("Error in creating payment")
+                .paymentDirectURL(null)
+                .createdTime(new Timestamp(System.currentTimeMillis()+7*60*60*1000L)).build();
         }
     }
 
@@ -374,12 +378,15 @@ public class VNPAYRequestService{
             String vnp_SecureHash = VNPAYConfigs.hmacSHA512(VNPAYConsts.vnp_HashSecret,hashData.toString());
             query.append("&").append("vnp_SecureHash").append("=").append(vnp_SecureHash);
             return RefundResponseDTO.builder().requestURL(query.toString())
-                .createdTime(calendar.getTime())
-                .message("Yêu cầu hoàn tiền đã được tạo!").build();
+                    .createdTime(calendar.getTime())
+                    .message("Yêu cầu hoàn tiền đã được tạo!").build();
         } catch (Exception ex)
         {
             log.error("Request refund error",ex);
-            return null;
+            return RefundResponseDTO.builder()
+                                    .message("Error in creating refund request")
+                                    .requestURL(null)
+                                    .createdTime(new Timestamp(System.currentTimeMillis()+7*60*60*1000L)).build();
         }
     }
 }
