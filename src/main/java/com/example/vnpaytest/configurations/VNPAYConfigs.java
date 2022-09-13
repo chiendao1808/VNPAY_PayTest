@@ -22,6 +22,20 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class VNPAYConfigs {
 
+    private static final String[] IP_HEADERS = {
+        "X-FORWARDED-FOR",
+        "Proxy-Client-IP",
+        "WL-Proxy-Client-IP",
+        "HTTP_X_FORWARDED_FOR",
+        "HTTP_X_FORWARDED",
+        "HTTP_X_CLUSTER_CLIENT_IP",
+        "HTTP_CLIENT_IP",
+        "HTTP_FORWARDED_FOR",
+        "HTTP_FORWARDED",
+        "HTTP_VIA",
+        "REMOTE_ADDR"
+    };
+
 
     // generate a md5 hash code
     public static  String md5(String message)
@@ -121,14 +135,20 @@ public class VNPAYConfigs {
     public static String getIPAddress(HttpServletRequest request)
     {
         try{
-            String IP = request.getHeader("X-FORWARDED-FOR");
-            if(IP==null)
-                IP = request.getRemoteAddr();
+            String IP = null;
+            for(String header : IP_HEADERS)
+            {
+                String ipTemp = request.getHeader(header);
+                if(ipTemp==null || ipTemp.isEmpty())
+                    continue;
+                else IP = ipTemp;
+            }
+            if (IP == null) IP = request.getRemoteAddr();
             return IP;
         } catch (Exception ex)
         {
             log.error("IP is invalid: " ,ex);
-            return "";
+            return null;
         }
     }
 

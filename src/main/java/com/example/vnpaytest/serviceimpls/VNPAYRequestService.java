@@ -310,6 +310,7 @@ public class VNPAYRequestService{
     public RefundResponseDTO doRefund(RefundRequestDTO refundRequestDTO, HttpServletRequest request)
     {
         try{
+            System.out.println(request.getHeaderNames());
             StringBuilder query = new StringBuilder(VNPAYConsts.vnpayTransactionURL);
             query.append("?");
             String vnp_RequestId = VNPAYConfigs.getRandomNum(15);
@@ -318,7 +319,7 @@ public class VNPAYRequestService{
             String vnp_TmnCode = VNPAYConsts.vnp_tnmCode;
             String vnp_TransactionType = refundRequestDTO.getTransactionType();
             Optional<Transaction> transactionOp = transactionRepository.getByTransactionCode(refundRequestDTO.getTransactionCode());
-            if(!transactionOp.isPresent() || transactionOp.get().getTransactionStatus() !=1)
+            if(!transactionOp.isPresent() || transactionOp.get().getTransactionStatus() !=1 || transactionOp.get().getOrder().getOrderStatus()!=1)
                 throw new RuntimeException("Transaction not found or not successfull transaction");
             String vnp_TxnRef = transactionOp.get().getOrder().getTransactionRef();
             if(refundRequestDTO.getAmount() > transactionOp.get().getAmount())
@@ -333,6 +334,8 @@ public class VNPAYRequestService{
             String vnp_CreateBy =refundRequestDTO.getRequestBy();
             String vnp_createDate = formatter.format(calendar.getTime());
             String vnp_IpAddr = VNPAYConfigs.getIPAddress(request);
+            System.out.println(vnp_IpAddr);
+            if(vnp_IpAddr ==null) throw new RuntimeException("Can't get request IP");
 
             // put to a map
             Map vnp_Params = new LinkedHashMap();
