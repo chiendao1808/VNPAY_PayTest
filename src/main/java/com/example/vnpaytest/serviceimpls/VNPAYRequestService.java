@@ -302,7 +302,9 @@ public class VNPAYRequestService{
         } catch (Exception ex)
         {
             log.error("Return process error", ex);
-            return null;
+            return UserResponseDTO.builder().message("Đã xảy ra lỗi trong quá trình thanh toán ")
+                .detail(ex.getMessage())
+                .paymentStatus("Fail").proccessTime(new Timestamp(System.currentTimeMillis()+7*60*60*1000L)).build();
         }
     }
 
