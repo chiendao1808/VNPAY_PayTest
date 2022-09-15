@@ -1,4 +1,4 @@
-package utils;
+package com.example.vnpaytest.utils;
 
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;

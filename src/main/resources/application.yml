@@ -1,23 +1,15 @@
 server:
   port: 8083
 spring:
-#  remote database
+
+#local database
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://207.148.71.182:7799/vnpay_db
+    url: jdbc:postgresql://localhost:5433/vnpay_db
     username: postgres
     password: postgres
     hikari:
       schema: vnpay_db_vnpt
-
-#local database
-#  datasource:
-#    driver-class-name: org.postgresql.Driver
-#    url: jdbc:postgresql://localhost:5433/vnpay_db
-#    username: postgres
-#    password: chiendao18082001
-#    hikari:
-#      schema: vnpay_db_vnpt
 
 
 
